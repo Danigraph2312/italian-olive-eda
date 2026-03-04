@@ -1,0 +1,394 @@
+---
+title: "Italian Olive - DV&R"
+author: "Daniele Mensorio"
+output:
+  html_document:
+    df_print: paged
+    fig_caption: yes
+    code_folding: hide
+---
+
+```{r global_options, include = FALSE}
+knitr::opts_chunk$set(
+    message = FALSE,
+    echo = TRUE,
+    warning = FALSE,
+    cache = TRUE,
+    tidy = FALSE
+)
+
+```
+
+```{r, include=FALSE}
+library(tidyverse)
+library(DT)
+library(gridExtra)
+library(summarytools)
+library(treemapify)
+library(d3treeR)
+library(treemap)
+library(htmlwidgets)
+library(ggpubr)
+
+library(circlepackeR) 
+
+library(patchwork)
+library(waffle)
+```
+
+# Data
+
+```{r}
+olive <- read.csv("~/Desktop/Università Daniele/Second Year/Data visulisation and reporting/LAB/data/olive.csv")
+view(olive)
+DT::datatable(olive)
+
+#let's transform the 2 character variables (region and area) into a catgeorical variable
+olive <- olive %>% 
+  mutate(region = as_factor(region), 
+         area = as_factor(area))
+```
+
+a.  **Who collected the data**
+
+The data was collected by Prof. Dr. Johann Gasteiger and Prof. Dr. Jure Zupan in *Neural networks in chemistry and drug design.*
+
+b.  **When was collected the data**
+
+The data was collected on October 8, 1999
+
+c.  **To which aim was collected the data**
+
+The main aim is a comparison of classification abilities of two different neural network methods, namely, back-propagation of errors and Kohonen learning, performed on a set of 572 Italian olive oils on the basis of an analysis of eight fatty acids.
+
+d.  **How many rows and how many variables (of what type)**
+
+The data set contained 572 rows and 11 variables (columns).
+
+Types of variable in the data-set:
+
+-   `rownames` Number of each row. (*integer variable*)
+
+-   `region` General region of Italy. (*character variable transformed into a categorical variable with levels* "`Southern Italy"`,"`Sardinia`" and "`Northern Italy`")
+
+-   `area` Area of Italy. (*character variable transformed into a categorical variable with levels* "`North-Apulia`", "`Calabria`", "`South-Apulia`", "`Sicily`" ,"`Inland-Sardinia`", "`Coast-Sardinia`", "`Umbria`", "`East-Liguria`", "`West-Liguria`")
+
+-   `palmitic` Percent palmitic acid of sample. (*numeric variable*)
+
+-   `palmitoleic` Percent palmitoleic of sample. (*numeric variable*)
+
+-   `stearic` Percent stearic acid of sample. (*numeric variable*)
+
+-   `oleic` Percent oleic acid of sample. (*numeric variable*)
+
+-   `linoleic` Percent linoleic acid of sample. (*numeric variable*)
+
+-   `linolenic` Percent linolenic acid of sample. (*numeric variable*)
+
+-   `arachidic` Percent arachidic acid of sample. (*numeric variable*)
+
+-   `eicosenoic` Percent eicosenoic acid of sample. (*numeric variable*)
+
+e.  **What represents the rows**
+
+Each observation represents an Italian olive oil.
+
+f.  **In what field of research of study have been employed the data**
+
+The data have been employed in Computational Chemistry and Molecular Modeling.
+
+# Missing Values
+
+```{r}
+sapply(olive, function(x) sum(is.na(x)))
+```
+
+As seen in the table above, there is no missing value (i.e. na values) in the data-set.
+
+# Outliers
+
+```{r}
+ggplot(olive, aes(x = rownames, y = region, fill = area)) + 
+  geom_boxplot()
+```
+
+As seen in the box-plots above, there is no presence of outliers in the data-set.
+
+# Data summary
+
+```{r}
+print(dfSummary(olive, 
+                varnumbers   = FALSE, 
+                valid.col    = FALSE, 
+                graph.magnif = 0.76),
+      method = 'render')
+```
+
+# Composition plot by region and area
+
+```{r}
+Pie_data <- olive %>% 
+  group_by(region) %>%
+  summarise(n = n(),.groups = 'drop') %>% 
+  mutate(perc=round(100*n/sum(n),1))
+datatable(Pie_data)
+
+Pie_data %>% 
+  ggplot(aes(x="",y=perc, fill=region)) +
+  geom_bar(width = 1,stat="identity") + 
+  geom_text(aes(label = paste0(perc,"%")),
+            position=position_stack(0.5)) + 
+  scale_fill_brewer("Blues") +
+  coord_polar("y", start=0) + 
+  theme_void() + 
+  labs(title="Pie Chart", subtitle = "Region", caption= "dataset Olive")
+
+```
+
+```{r}
+Pie_data <- olive %>% 
+  group_by(area) %>%
+  summarise(n = n(),.groups = 'drop') %>% 
+  mutate(perc=round(100*n/sum(n),1))
+datatable(Pie_data)
+
+Pie_data %>% 
+  ggplot(aes(x="",y=perc, fill=area)) +
+  geom_bar(width = 1,stat="identity") + 
+  geom_text(aes(label = paste0(perc,"%")),
+            position=position_stack(0.5)) + 
+  scale_fill_brewer("Blues") +
+  coord_polar("y", start=0) + 
+  theme_void() + 
+  labs(title="Pie chart", subtitle = "Area", caption= "dataset Olive")
+
+```
+
+```{r}
+DATA1 <- olive %>%
+  group_by(region, area) %>%
+  summarise(n = n(),.groups = 'drop')
+p1 <- treemap(DATA1,
+             index=c("region", "area"),
+             vSize="n",
+             type="index",
+             palette = "Set2",
+             bg.labels=c("white"),
+             align.labels=list(
+               c("center", "center"), 
+               c("right", "bottom")
+             )  
+           )  
+d3tree2(p1 ,  rootname = "General" )
+```
+
+# Composition of fatty acid into olive oil
+
+```{r}
+data1 <- olive %>% 
+  summarise(palmitic = (sum(palmitic)/n()),
+            palmitoleic = (sum(palmitoleic)/n()), 
+            stearic = (sum(stearic)/n()), 
+            oleic = (sum(oleic)/n()), 
+            linoleic = (sum(linoleic)/n()), 
+            linolenic = (sum(linolenic)/n()), 
+            arachidic = (sum(arachidic)/n()), 
+            eicosenoic = (sum(eicosenoic)/n()), .groups = "drop")
+datatable(data1)
+
+data1_long <- gather(data1, key = "Oil", value = "Percentage")
+ggplot(data1_long, aes(x = "", y = Percentage, fill = Oil)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar("y") +
+  theme_minimal() + 
+  theme_void() + 
+  labs(title = "Percentage of Each Oil Type",
+       fill = "Oil Type") +
+  theme(legend.position = "bottom")
+```
+
+# Composition of fatty oils into olive oil filtered by region
+
+```{r}
+data2 <- olive %>% 
+  group_by(region) %>%
+  summarise(palmitic = (sum(palmitic)/n()),
+            palmitoleic = (sum(palmitoleic)/n()), 
+            stearic = (sum(stearic)/n()), 
+            oleic = (sum(oleic)/n()), 
+            linoleic = (sum(linoleic)/n()), 
+            linolenic = (sum(linolenic)/n()), 
+            arachidic = (sum(arachidic)/n()), 
+            eicosenoic = (sum(eicosenoic)/n()), .groups = "drop")
+datatable(data2)
+plot1 <- data2 %>% 
+  filter(region == "Southern Italy") %>% 
+  gather(key = "variable", value = "value", -region)
+pc1 <- ggplot(plot1, aes(x = factor(1), y = value, fill = variable)) + 
+  geom_bar(stat = "identity", width = 1, color = "white") + 
+  coord_polar("y") + 
+  theme_minimal() + 
+  theme_void() + 
+  labs(title = "Composition of Fatty Oils - Southern italy", fill = "Oil Type") + 
+  theme(legend.position = "bottom") + 
+  theme(axis.text = element_blank(), axis.title = element_blank()) + 
+  geom_text(aes(label = paste0(round(value, 1), "%")), position = position_stack(vjust = 0.5))
+plot2 <- data2 %>% 
+  filter(region == "Sardinia") %>% 
+  gather(key = "variable", value = "value", -region)
+pc2 <- ggplot(plot2, aes(x = factor(1), y = value, fill = variable)) + 
+  geom_bar(stat = "identity", width = 1, color = "white") + 
+  coord_polar("y") + 
+  theme_minimal() + 
+  theme_void() +
+  labs(title = "Composition of Fatty Oils - Sardinia", fill = "Oil Type") + 
+  theme(legend.position = "bottom") + 
+  theme(axis.text = element_blank(), axis.title = element_blank()) + 
+  geom_text(aes(label = paste0(round(value, 1), "%")), position = position_stack(vjust = 0.5))
+plot3 <- data2 %>% 
+  filter(region == "Northern Italy") %>% 
+  gather(key = "variable", value = "value", -region)
+pc3 <- ggplot(plot3, aes(x = factor(1), y = value, fill = variable)) + 
+  geom_bar(stat = "identity", width = 1, color = "white") + 
+  coord_polar("y") + 
+  theme_minimal() + 
+  theme_void() +
+  labs(title = "Composition of Fatty Oils - Northern Italy", fill = "Oil Type") + 
+  theme(legend.position = "bottom") + 
+  theme(axis.text = element_blank(), axis.title = element_blank()) + 
+  geom_text(aes(label = paste0(round(value, 1), "%")), position = position_stack(vjust = 0.5))
+ggarrange(pc1, pc2, pc3, ncol = 3)
+```
+
+# Composition of fatty oils into olive oil filtered by area
+
+```{r}
+data7 <- olive %>% 
+  group_by(region, area) %>%
+  summarise(palmitic = (sum(palmitic)/n()),
+            palmitoleic = (sum(palmitoleic)/n()), 
+            stearic = (sum(stearic)/n()), 
+            oleic = (sum(oleic)/n()), 
+            linoleic = (sum(linoleic)/n()), 
+            linolenic = (sum(linolenic)/n()), 
+            arachidic = (sum(arachidic)/n()), 
+            eicosenoic = (sum(eicosenoic)/n()), .groups = "drop") 
+datatable(data7)
+
+
+plot1 <- data7 %>% 
+  filter(area == "North-Apulia") %>%
+  gather(key = "fatty_acid", value = "value", -region, -area)
+pc1 <- ggplot(plot1, aes(x = factor(1), y = value, fill = fatty_acid)) + 
+  geom_bar(stat = "identity", width = 1, color = "white") + 
+  coord_polar("y") + 
+  theme_minimal() + 
+  theme_void() +
+  theme(legend.position = "left") +
+  labs(title = "Composition of Fatty Oils - North-Apulia", fill = "Oil Type") + 
+  theme(axis.text = element_blank(), axis.title = element_blank()) + 
+  geom_text(aes(label = paste0(round(value, 1), "%")), position = position_stack(vjust = 0.5))
+plot2 <- data7 %>% 
+  filter(area == "Calabria") %>% 
+  gather(key = "fatty_acid", value = "value", -region, -area)
+pc2 <- ggplot(plot2, aes(x = factor(1), y = value, fill = fatty_acid)) + 
+  geom_bar(stat = "identity", width = 1, color = "white") + 
+  coord_polar("y") + 
+  theme_minimal() + 
+  theme_void() +
+  theme(legend.position = "none") +
+  labs(title = "Composition of Fatty Oils - Calabria", fill = "Oil Type") + 
+  theme(axis.text = element_blank(), axis.title = element_blank()) + 
+  geom_text(aes(label = paste0(round(value, 1), "%")), position = position_stack(vjust = 0.5))
+plot3 <- data7 %>% 
+  filter(area == "South-Apulia") %>% 
+  gather(key = "fatty_acid", value = "value", -region, -area)
+pc3 <- ggplot(plot3, aes(x = factor(1), y = value, fill = fatty_acid)) + 
+  geom_bar(stat = "identity", width = 1, color = "white") + 
+  coord_polar("y") + 
+  theme_minimal() + 
+  theme_void() +
+  theme(legend.position = "none") +
+  labs(title = "Composition of Fatty Oils - South-Apulia", fill = "Oil Type") + 
+  theme(axis.text = element_blank(), axis.title = element_blank()) + 
+  geom_text(aes(label = paste0(round(value, 1), "%")), position = position_stack(vjust = 0.5))
+plot4 <- data7 %>% 
+  filter(area == "Sicily") %>% 
+  gather(key = "fatty_acid", value = "value", -region, -area)
+pc4 <- ggplot(plot4, aes(x = factor(1), y = value, fill = fatty_acid)) + 
+  geom_bar(stat = "identity", width = 1, color = "white") + 
+  coord_polar("y") + 
+  theme_minimal() + 
+  theme_void() +
+  theme(legend.position = "none") +
+  labs(title = "Composition of Fatty Oils - Sicily", fill = "Oil Type") + 
+  theme(axis.text = element_blank(), axis.title = element_blank()) + 
+  geom_text(aes(label = paste0(round(value, 1), "%")), position = position_stack(vjust = 0.5))
+
+
+plot5 <- data7 %>% 
+  filter(area == "Inland-Sardinia") %>%
+  gather(key = "fatty_acid", value = "value", -region, -area)
+pc5 <- ggplot(plot5, aes(x = factor(1), y = value, fill = fatty_acid)) + 
+  geom_bar(stat = "identity", width = 1, color = "white") + 
+  coord_polar("y") + 
+  theme_minimal() + 
+  theme_void() +
+  theme(legend.position = "none") +
+  labs(title = "Composition of Fatty Oils - Inland-Sardinia", fill = "Oil Type") + 
+  theme(axis.text = element_blank(), axis.title = element_blank()) + 
+  geom_text(aes(label = paste0(round(value, 1), "%")), position = position_stack(vjust = 0.5))
+plot6 <- data7 %>% 
+  filter(area == "Coast-Sardinia") %>% 
+  gather(key = "fatty_acid", value = "value", -region, -area)
+pc6 <- ggplot(plot6, aes(x = factor(1), y = value, fill = fatty_acid)) + 
+  geom_bar(stat = "identity", width = 1, color = "white") + 
+  coord_polar("y") + 
+  theme_minimal() +
+  theme_void() +
+  theme(legend.position = "none") +
+  labs(title = "Composition of Fatty Oils - Coast-Sardinia", fill = "Oil Type") + 
+  theme(axis.text = element_blank(), axis.title = element_blank()) + 
+  geom_text(aes(label = paste0(round(value, 1), "%")), position = position_stack(vjust = 0.5))
+
+
+plot7 <- data7 %>% 
+  filter(area == "Umbria") %>%
+  gather(key = "fatty_acid", value = "value", -region, -area)
+pc7 <- ggplot(plot7, aes(x = factor(1), y = value, fill = fatty_acid)) + 
+  geom_bar(stat = "identity", width = 1, color = "white") + 
+  coord_polar("y") + 
+  theme_minimal() + 
+  theme_void() +
+  theme(legend.position = "none") +
+  labs(title = "Composition of Fatty Oils - Umbria", fill = "Oil Type") + 
+  theme(axis.text = element_blank(), axis.title = element_blank()) + 
+  geom_text(aes(label = paste0(round(value, 1), "%")), position = position_stack(vjust = 0.5))
+plot8 <- data7 %>% 
+  filter(area == "East-Liguria") %>% 
+  gather(key = "fatty_acid", value = "value", -region, -area)
+pc8 <- ggplot(plot8, aes(x = factor(1), y = value, fill = fatty_acid)) + 
+  geom_bar(stat = "identity", width = 1, color = "white") + 
+  coord_polar("y") + 
+  theme_minimal() + 
+  theme_void() +
+  theme(legend.position = "none") +
+  labs(title = "Composition of Fatty Oils - East-Liguria", fill = "Oil Type") + 
+  theme(axis.text = element_blank(), axis.title = element_blank()) + 
+  geom_text(aes(label = paste0(round(value, 1), "%")), position = position_stack(vjust = 0.5))
+plot9 <- data7 %>% 
+  filter(area == "West-Liguria") %>% 
+  gather(key = "fatty_acid", value = "value", -region, -area)
+pc9 <- ggplot(plot7, aes(x = factor(1), y = value, fill = fatty_acid)) + 
+  geom_bar(stat = "identity", width = 1, color = "white") + 
+  coord_polar("y") + 
+  theme_minimal() + 
+  theme_void() +
+  theme(legend.position = "none") +
+  labs(title = "Composition of Fatty Oils - West-Liguria", fill = "Oil Type") + 
+  theme(axis.text = element_blank(), axis.title = element_blank()) + 
+  geom_text(aes(label = paste0(round(value, 1), "%")), position = position_stack(vjust = 0.5))
+
+plots_list <- list(pc1, pc2, pc3, pc4, pc5, pc6, pc7, pc8, pc9)
+grid.arrange(grobs = plots_list, nrow = 3, common.legend = TRUE, legend = "right", align = "hv") 
+```
