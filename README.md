@@ -81,6 +81,8 @@ The report is fully reproducible: all code is embedded in the `.Rmd` source with
 italian-olive-eda/
 ├── Olive_oil_DVR.Rmd     # R Markdown source (fully reproducible)
 ├── Olive_oil_DVR.html    # Rendered interactive HTML report
+├── data/
+│   └── Olive.pdf
 └── README.md
 ```
 
